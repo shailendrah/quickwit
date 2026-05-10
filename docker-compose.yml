@@ -224,6 +224,48 @@ services:
       - all
       - gcp-pubsub
 
+  quickwit:
+    image: quickwit/quickwit:${QUICKWIT_VERSION:-latest}
+    container_name: quickwit
+    profiles:
+      - quickwit
+    ports:
+      - "${MAP_HOST_QUICKWIT:-127.0.0.1}:7280:7280"   # REST + UI
+      - "${MAP_HOST_QUICKWIT:-127.0.0.1}:7281:7281"   # gRPC
+    environment:
+      # Postgres metastore lives in the user's separate pgcompose stack and is
+      # reached over the host network. host.docker.internal works on
+      # Mac/Windows natively and on Linux via the extra_hosts entry below.
+      QW_METASTORE_URI: ${QW_METASTORE_URI:-postgres://skmishra:skmishra@host.docker.internal:5432/quickwit_metastore}
+      # OCI Object Storage credentials passed through unchanged — the YAML
+      # at config/quickwit-node.yaml references these directly via env interp.
+      # Quickwit only ships s3 / azure backends; OCI is reached through its
+      # S3-compatible API, so the YAML uses the `storage.s3` block but points
+      # at OCI's vhcompat endpoint. "s3" here means S3-compatible protocol.
+      OCI_ACCESS_KEY: ${OCI_ACCESS_KEY}
+      OCI_SECRET_ACCESS_KEY: ${OCI_SECRET_ACCESS_KEY}
+      OCI_REGION: ${OCI_REGION}
+      # SDK-level tuning (not credential aliases): OCI's S3-compat rejects
+      # aws-chunked PutObject payloads, so tell the AWS SDK only to add a
+      # checksum when the operation actually requires one.
+      AWS_REQUEST_CHECKSUM_CALCULATION: WHEN_REQUIRED
+      AWS_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
+    volumes:
+      # Local data dir for indexer scratch, hotcache, optional split cache,
+      # and the ingest API queue. Splits themselves are persisted to OCI.
+      - ./qwdata:/quickwit/qwdata
+      # Node config (created separately — see config/quickwit-node.yaml).
+      - ./config:/quickwit/config:ro
+      # Index configs from src/ are mounted so `quickwit index create
+      # --index-config /quickwit/src/index-articles.yaml` works from inside.
+      - ./src:/quickwit/src:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command:
+      - run
+      - --config
+      - /quickwit/config/quickwit-node.yaml
+
 volumes:
   azurite_data:
   fake_gcs_server_data:

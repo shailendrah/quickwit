@@ -1,0 +1,65 @@
+version: 0.8
+index_id: app_logs
+
+doc_mapping:
+  mode: dynamic
+  field_mappings:
+    - name: timestamp
+      type: datetime
+      input_formats: [rfc3339]
+      fast_precision: milliseconds
+      fast: true
+    - name: level
+      type: text
+      tokenizer: raw
+      fast: true
+    - name: service
+      type: text
+      tokenizer: raw
+      fast: true
+    - name: host
+      type: text
+      tokenizer: raw
+      fast: true
+    - name: client_ip
+      type: ip
+      fast: true
+    - name: user_id
+      type: u64
+      fast: true
+    - name: trace_id
+      type: text
+      tokenizer: raw
+      fast: true
+    - name: span_id
+      type: text
+      tokenizer: raw
+    - name: message
+      type: text
+      tokenizer: default
+      record: position
+    - name: http_method
+      type: text
+      tokenizer: raw
+      fast: true
+    - name: http_path
+      type: text
+      tokenizer: raw
+      fast: true
+    - name: status_code
+      type: u64
+      fast: true
+    - name: latency_ms
+      type: f64
+      fast: true
+    - name: attributes
+      type: json
+      tokenizer: raw
+      fast: true
+  timestamp_field: timestamp
+
+search_settings:
+  default_search_fields: [message, service, level]
+
+indexing_settings:
+  commit_timeout_secs: 10

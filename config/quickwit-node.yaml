@@ -1,0 +1,41 @@
+version: 0.8
+
+# Bind to all interfaces so the dockerized node accepts traffic from the host.
+# (The shipped sample defaults to 127.0.0.1 which means the container would
+# ignore any request coming through the published port.)
+listen_address: 0.0.0.0
+
+# Local working dir inside the container (host-mounted at ./qwdata).
+# Holds indexer scratch, hotcache, optional split cache, and the ingest queue.
+# Splits themselves are persisted to OCI per `default_index_root_uri` below.
+data_dir: /quickwit/qwdata
+
+# Metastore lives in the user's host Postgres (separate pgcompose stack).
+# Set via the QW_METASTORE_URI env var on the container — see docker-compose.yml.
+# metastore_uri: postgres://...
+
+# Index splits go to OCI Object Storage under a dedicated prefix, separate from
+# the NDJSON source data at s3://polaris-iceberg/quickwit/.
+# Splits for index <id> land under s3://polaris-iceberg/quickwit-indexes/<id>/.
+default_index_root_uri: s3://polaris-iceberg/quickwit-indexes
+
+# Quickwit only has `s3` and `azure` storage backends. OCI Object Storage is
+# accessed through its S3-compatible API, so the block name below is `s3` —
+# but the endpoint points at OCI's vhcompat host, and the credentials are
+# OCI Customer Secret Keys (Console → Profile → Customer Secret Keys), not
+# AWS access keys.
+storage:
+  s3:
+    access_key_id: ${OCI_ACCESS_KEY}
+    secret_access_key: ${OCI_SECRET_ACCESS_KEY}
+    region: ${OCI_REGION}
+    endpoint: https://vhcompat.objectstorage.${OCI_REGION}.oci.customer-oci.com
+    # The vhcompat endpoint carries a wildcard cert covering bucket
+    # subdomains, so virtual-hosted-style addressing works out of the box.
+    force_path_style_access: false
+
+indexer:
+  enable_otlp_endpoint: false
+
+jaeger:
+  enable_endpoint: false

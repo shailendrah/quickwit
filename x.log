@@ -1,0 +1,539 @@
+QW="http://localhost:7280" ./src/test_quickwit.sh
+
+== Preflight ==
+>>> Quickwit version
+{
+  "build": {
+    "build_date": "2024-09-03T11:53:20Z",
+    "build_profile": "release",
+    "build_target": "aarch64-unknown-linux-gnu",
+    "cargo_pkg_version": "0.8.2",
+    "commit_date": "2024-09-03T11:26:51Z",
+    "commit_hash": "0f28194d5a6c637f8c66f916906e861d8598f58c",
+    "commit_short_hash": "0f28194",
+    "commit_tags": [
+      "qw-matterlabs-20240903"
+    ],
+    "version": "0.8.2-nightly"
+  },
+  "runtime": {
+    "num_cpus_logical": 18,
+    "num_cpus_physical": 18,
+    "num_threads_blocking": 16,
+    "num_threads_non_blocking": 2
+  }
+}
+>>> Confirm index 'articles' is registered
+{
+  "index_id": "articles",
+  "num_fields": 11,
+  "timestamp_field": "published_at",
+  "default_search_fields": [
+    "title",
+    "body",
+    "tags"
+  ]
+}
+>>> Confirm index 'app_logs' is registered
+{
+  "index_id": "app_logs",
+  "num_fields": 14,
+  "timestamp_field": "timestamp",
+  "default_search_fields": [
+    "message",
+    "service",
+    "level"
+  ]
+}
+
+== Doc counts (smoke test) ==
+>>> articles total docs
+2000
+>>> app_logs total docs
+20000
+>>> split count per index (visible after ingest)
+3
+3
+
+== Articles — full-text & faceting ==
+>>> Default-field search (title, body, tags) for the word 'system'
+{
+  "title": "Class affect movie door agree on position myself beat movement outside best hope from",
+  "category": "politics",
+  "tags": [
+    "detail",
+    "go",
+    "guess",
+    "probably",
+    "require",
+    "understand"
+  ],
+  "language": "fr"
+}
+{
+  "title": "Now why yes skill difference per low authority next outside",
+  "category": "world",
+  "tags": [
+    "anything",
+    "it",
+    "face",
+    "try",
+    "possible"
+  ],
+  "language": "de"
+}
+{
+  "title": "Notice test peace piece Republican series apply three answer imagine care",
+  "category": "business",
+  "tags": [
+    "morning",
+    "southern",
+    "sometimes",
+    "appear"
+  ],
+  "language": "de"
+}
+>>> Field-targeted: title contains 'data'
+{
+  "title": "Data position though value speech even special admit top enter debate player east",
+  "author": "Sean Hickman",
+  "published_at": "2025-12-01T11:46:45.773336Z"
+}
+{
+  "title": "General your no year data financial family pass person cut people",
+  "author": "Melanie Cline",
+  "published_at": "2025-07-14T10:20:59.997909Z"
+}
+{
+  "title": "Listen citizen vote assume window toward scientist data finally political individual condition peace",
+  "author": "Kevin Aguirre",
+  "published_at": "2025-01-16T05:00:01.80644Z"
+}
+>>> Boolean: business + English + word 'market' anywhere
+{
+  "title": "Least born prepare stand window such wonder trade per",
+  "category": "business",
+  "language": "en",
+  "source": "Tech Pulse"
+}
+{
+  "title": "Whole network receive well will range hour movie game",
+  "category": "business",
+  "language": "en",
+  "source": "Market Watch"
+}
+{
+  "title": "Different throughout so language parent recognize school approach onto six good population now",
+  "category": "business",
+  "language": "en",
+  "source": "Tech Pulse"
+}
+>>> Faceted browse: technology category, newest first
+    Quickwit sort_by is inverted vs ES/JSON:API: bare field = Desc, +field = Desc,
+    -field = Asc. Newest-first is therefore 'published_at' (no prefix) or '+published_at'.
+{
+  "published_at": "2026-04-30T17:52:31.894484Z",
+  "title": "Party trouble change direction work for but rule guess"
+}
+{
+  "published_at": "2026-04-26T01:35:35.18593Z",
+  "title": "Once sort respond type but process individual fish"
+}
+{
+  "published_at": "2026-04-21T22:00:30.61951Z",
+  "title": "Travel important head case until growth detail"
+}
+{
+  "published_at": "2026-04-21T04:08:40.367974Z",
+  "title": "Local idea race hit plan no total he so could consumer family inside open thousand expect"
+}
+{
+  "published_at": "2026-04-17T17:25:28.517212Z",
+  "title": "Special thus middle maintain unit economic road miss adult middle"
+}
+
+== App logs — filters, ranges, IP types ==
+>>> All ERROR-level (≈4% of 20k)
+834
+>>> ERRORs in checkout-api specifically
+{
+  "timestamp": "2026-05-04T23:40:40.385526Z",
+  "service": "checkout-api",
+  "status_code": 504,
+  "message": "database query failed: Five myself family television him"
+}
+{
+  "timestamp": "2026-04-27T13:28:08.385526Z",
+  "service": "checkout-api",
+  "status_code": 400,
+  "message": "circuit breaker tripped for auth-service"
+}
+{
+  "timestamp": "2026-04-23T03:50:53.385526Z",
+  "service": "checkout-api",
+  "status_code": 503,
+  "message": "invalid auth token for user xschwartz"
+}
+{
+  "timestamp": "2026-04-26T00:22:30.385526Z",
+  "service": "checkout-api",
+  "status_code": 429,
+  "message": "invalid auth token for user tjackson"
+}
+{
+  "timestamp": "2026-04-23T22:59:10.385526Z",
+  "service": "checkout-api",
+  "status_code": 403,
+  "message": "unable to acquire lock on resource order:9552"
+}
+>>> All 5xx responses
+{
+  "service": "recommendation-engine",
+  "status_code": 502,
+  "http_method": "GET",
+  "http_path": "/healthz",
+  "message": "database query failed: Professor trial man"
+}
+{
+  "service": "ingest-pipeline",
+  "status_code": 504,
+  "http_method": "GET",
+  "http_path": "/api/v1/products",
+  "message": "invalid auth token for user qbuck"
+}
+{
+  "service": "user-profile",
+  "status_code": 500,
+  "http_method": "POST",
+  "http_path": "/api/v1/checkout",
+  "message": "rate limit exceeded for tenant c8350dd0-f588-4ee5-a177-242aaa47a00b"
+}
+{
+  "service": "search-frontend",
+  "status_code": 504,
+  "http_method": "PUT",
+  "http_path": "/metrics",
+  "message": "failed to deserialize payload field user_id"
+}
+{
+  "service": "auth-service",
+  "status_code": 504,
+  "http_method": "GET",
+  "http_path": "/api/v1/users/99016",
+  "message": "unable to acquire lock on resource order:32301"
+}
+>>> Slow requests (>1s) — exercises numeric range on a fast field
+>>> IP type query — count of all logs (full IPv4 range)
+20000
+
+== Time-range pruning ==
+    Quickwit prunes splits whose time_range doesn't overlap *before* reading any object-storage bytes.
+>>> ERRORs in the last 7 days (start=1777366748 end=1777971548)
+{
+  "num_hits": 390,
+  "elapsed_time_micros": 52993
+}
+>>> Articles published in the last 30 days
+{
+  "num_hits": 70,
+  "elapsed_time_micros": 5186
+}
+
+== Aggregations ==
+>>> Distribution of log levels (terms agg)
+[
+  {
+    "doc_count": 14021,
+    "key": "INFO"
+  },
+  {
+    "doc_count": 2960,
+    "key": "DEBUG"
+  },
+  {
+    "doc_count": 1977,
+    "key": "WARN"
+  },
+  {
+    "doc_count": 834,
+    "key": "ERROR"
+  },
+  {
+    "doc_count": 208,
+    "key": "FATAL"
+  }
+]
+>>> Errors per service — "where are the fires?"
+[
+  {
+    "doc_count": 131,
+    "key": "billing-worker"
+  },
+  {
+    "doc_count": 110,
+    "key": "ingest-pipeline"
+  },
+  {
+    "doc_count": 107,
+    "key": "auth-service"
+  },
+  {
+    "doc_count": 104,
+    "key": "search-frontend"
+  },
+  {
+    "doc_count": 104,
+    "key": "recommendation-engine"
+  },
+  {
+    "doc_count": 95,
+    "key": "user-profile"
+  },
+  {
+    "doc_count": 93,
+    "key": "checkout-api"
+  },
+  {
+    "doc_count": 90,
+    "key": "notification-service"
+  }
+]
+>>> p50 / p95 / p99 latency by HTTP method (nested agg)
+[
+  {
+    "doc_count": 8578,
+    "key": "GET",
+    "latency_pct": {
+      "values": {
+        "50.0": 34.126276903648446,
+        "95.0": 152.95101002859036,
+        "99.0": 232.78881637272443
+      }
+    }
+  },
+  {
+    "doc_count": 5629,
+    "key": "POST",
+    "latency_pct": {
+      "values": {
+        "50.0": 35.5190440459257,
+        "95.0": 149.922277156737,
+        "99.0": 237.49162074389068
+      }
+    }
+  },
+  {
+    "doc_count": 2956,
+    "key": "DELETE",
+    "latency_pct": {
+      "values": {
+        "50.0": 36.236600491297935,
+        "95.0": 159.19327143165495,
+        "99.0": 232.78881637272443
+      }
+    }
+  },
+  {
+    "doc_count": 2837,
+    "key": "PUT",
+    "latency_pct": {
+      "values": {
+        "50.0": 35.5190440459257,
+        "95.0": 149.922277156737,
+        "99.0": 228.1791368405912
+      }
+    }
+  }
+]
+>>> Errors per day, last 14 days (date_histogram)
+[
+  {
+    "doc_count": 37,
+    "key": 1776729600000.0,
+    "key_as_string": "2026-04-21T00:00:00Z"
+  },
+  {
+    "doc_count": 63,
+    "key": 1776816000000.0,
+    "key_as_string": "2026-04-22T00:00:00Z"
+  },
+  {
+    "doc_count": 68,
+    "key": 1776902400000.0,
+    "key_as_string": "2026-04-23T00:00:00Z"
+  },
+  {
+    "doc_count": 65,
+    "key": 1776988800000.0,
+    "key_as_string": "2026-04-24T00:00:00Z"
+  },
+  {
+    "doc_count": 63,
+    "key": 1777075200000.0,
+    "key_as_string": "2026-04-25T00:00:00Z"
+  },
+  {
+    "doc_count": 65,
+    "key": 1777161600000.0,
+    "key_as_string": "2026-04-26T00:00:00Z"
+  },
+  {
+    "doc_count": 57,
+    "key": 1777248000000.0,
+    "key_as_string": "2026-04-27T00:00:00Z"
+  },
+  {
+    "doc_count": 61,
+    "key": 1777334400000.0,
+    "key_as_string": "2026-04-28T00:00:00Z"
+  },
+  {
+    "doc_count": 53,
+    "key": 1777420800000.0,
+    "key_as_string": "2026-04-29T00:00:00Z"
+  },
+  {
+    "doc_count": 68,
+    "key": 1777507200000.0,
+    "key_as_string": "2026-04-30T00:00:00Z"
+  },
+  {
+    "doc_count": 46,
+    "key": 1777593600000.0,
+    "key_as_string": "2026-05-01T00:00:00Z"
+  },
+  {
+    "doc_count": 52,
+    "key": 1777680000000.0,
+    "key_as_string": "2026-05-02T00:00:00Z"
+  },
+  {
+    "doc_count": 56,
+    "key": 1777766400000.0,
+    "key_as_string": "2026-05-03T00:00:00Z"
+  },
+  {
+    "doc_count": 60,
+    "key": 1777852800000.0,
+    "key_as_string": "2026-05-04T00:00:00Z"
+  },
+  {
+    "doc_count": 20,
+    "key": 1777939200000.0,
+    "key_as_string": "2026-05-05T00:00:00Z"
+  }
+]
+>>> Article tag cloud — top 20 tags
+[
+  {
+    "doc_count": 18,
+    "key": "thus"
+  },
+  {
+    "doc_count": 16,
+    "key": "mission"
+  },
+  {
+    "doc_count": 16,
+    "key": "good"
+  },
+  {
+    "doc_count": 16,
+    "key": "woman"
+  },
+  {
+    "doc_count": 16,
+    "key": "surface"
+  },
+  {
+    "doc_count": 16,
+    "key": "investment"
+  },
+  {
+    "doc_count": 16,
+    "key": "expert"
+  },
+  {
+    "doc_count": 15,
+    "key": "color"
+  },
+  {
+    "doc_count": 15,
+    "key": "other"
+  },
+  {
+    "doc_count": 15,
+    "key": "detail"
+  },
+  {
+    "doc_count": 15,
+    "key": "someone"
+  },
+  {
+    "doc_count": 15,
+    "key": "black"
+  },
+  {
+    "doc_count": 15,
+    "key": "part"
+  },
+  {
+    "doc_count": 15,
+    "key": "TV"
+  },
+  {
+    "doc_count": 15,
+    "key": "about"
+  },
+  {
+    "doc_count": 15,
+    "key": "bad"
+  },
+  {
+    "doc_count": 15,
+    "key": "fall"
+  },
+  {
+    "doc_count": 15,
+    "key": "area"
+  },
+  {
+    "doc_count": 15,
+    "key": "support"
+  },
+  {
+    "doc_count": 14,
+    "key": "off"
+  }
+]
+
+== Showcase — combined query ==
+    boolean text + time range pruning + terms aggregation, all in one request.
+{
+  "total": 5,
+  "elapsed_time_micros": 434917,
+  "breakdown": [
+    {
+      "doc_count": 1,
+      "key": 503.0
+    },
+    {
+      "doc_count": 1,
+      "key": 500.0
+    },
+    {
+      "doc_count": 1,
+      "key": 401.0
+    },
+    {
+      "doc_count": 1,
+      "key": 403.0
+    },
+    {
+      "doc_count": 1,
+      "key": 504.0
+    }
+  ]
+}
+
+All queries completed.
